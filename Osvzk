@@ -1,0 +1,858 @@
+--==================================================
+-- BKY HUB
+-- MENU + LOCK EXTERNO MOVIBLE + FOV + ESP
+-- ESP BOX MÁS PEQUEÑA
+--==================================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+local FOV = 180
+local lockEnabled = false
+local espEnabled = false
+local buttonsLocked = false
+local lockedTarget = nil
+
+--==================================================
+-- LIMPIAR
+--==================================================
+
+local oldGui = PlayerGui:FindFirstChild("BKYHub")
+
+if oldGui then
+    oldGui:Destroy()
+end
+
+--==================================================
+-- GUI
+--==================================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "BKYHub"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = PlayerGui
+
+--==================================================
+-- FOV
+--==================================================
+
+local fovCircle = Instance.new("Frame")
+fovCircle.Size = UDim2.fromOffset(FOV * 2, FOV * 2)
+fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+fovCircle.Position = UDim2.fromScale(0.5, 0.5)
+fovCircle.BackgroundTransparency = 1
+fovCircle.ZIndex = 2
+fovCircle.Parent = gui
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Thickness = 2
+fovStroke.Transparency = 0.15
+fovStroke.Parent = fovCircle
+
+--==================================================
+-- BOTON BKY
+--==================================================
+
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.fromOffset(55, 45)
+openButton.Position = UDim2.new(0, 15, 0.5, -65)
+openButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+openButton.BorderSizePixel = 0
+openButton.Text = "BKY"
+openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.TextSize = 13
+openButton.Font = Enum.Font.GothamBold
+openButton.Visible = false
+openButton.ZIndex = 100
+openButton.Parent = gui
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 10)
+openCorner.Parent = openButton
+
+--==================================================
+-- LOCK EXTERNO
+--==================================================
+
+local externalLock = Instance.new("TextButton")
+externalLock.Name = "ExternalLock"
+externalLock.Size = UDim2.fromOffset(85, 52)
+externalLock.Position = UDim2.new(0, 15, 0.5, 0)
+externalLock.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+externalLock.BorderSizePixel = 0
+externalLock.Text = "LOCK"
+externalLock.TextColor3 = Color3.new(1, 1, 1)
+externalLock.TextSize = 14
+externalLock.Font = Enum.Font.GothamBold
+externalLock.ZIndex = 100
+externalLock.Parent = gui
+
+local externalCorner = Instance.new("UICorner")
+externalCorner.CornerRadius = UDim.new(0, 10)
+externalCorner.Parent = externalLock
+
+--==================================================
+-- ARRASTRAR LOCK
+--==================================================
+
+local lockDragging = false
+local lockDragStart
+local lockStartPosition
+
+externalLock.InputBegan:Connect(function(input)
+
+    if buttonsLocked then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        lockDragging = true
+        lockDragStart = input.Position
+        lockStartPosition = externalLock.Position
+
+        input.Changed:Connect(function()
+
+            if input.UserInputState == Enum.UserInputState.End then
+                lockDragging = false
+            end
+
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+    if not lockDragging then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        local delta = input.Position - lockDragStart
+
+        externalLock.Position =
+            UDim2.new(
+                lockStartPosition.X.Scale,
+                lockStartPosition.X.Offset + delta.X,
+
+                lockStartPosition.Y.Scale,
+                lockStartPosition.Y.Offset + delta.Y
+            )
+    end
+end)
+
+--==================================================
+-- MENU
+--==================================================
+
+local main = Instance.new("Frame")
+
+main.Size = UDim2.fromOffset(245, 300)
+main.Position = UDim2.new(0.5, -122, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.BorderSizePixel = 0
+main.ZIndex = 50
+main.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = main
+
+local title = Instance.new("TextLabel")
+
+title.Size = UDim2.new(1, -55, 0, 45)
+title.Position = UDim2.fromOffset(12, 0)
+title.BackgroundTransparency = 1
+title.Text = "BKY HUB"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 19
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 51
+title.Parent = main
+
+--==================================================
+-- CERRAR
+--==================================================
+
+local closeButton = Instance.new("TextButton")
+
+closeButton.Size = UDim2.fromOffset(35, 35)
+closeButton.Position = UDim2.new(1, -42, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+closeButton.BorderSizePixel = 0
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.TextSize = 22
+closeButton.Font = Enum.Font.GothamBold
+closeButton.ZIndex = 52
+closeButton.Parent = main
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeButton
+
+--==================================================
+-- CREAR BOTONES
+--==================================================
+
+local function createButton(name, text, y)
+
+    local button = Instance.new("TextButton")
+
+    button.Name = name
+    button.Size = UDim2.new(1, -24, 0, 45)
+    button.Position = UDim2.fromOffset(12, y)
+    button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.TextSize = 15
+    button.Font = Enum.Font.GothamBold
+    button.ZIndex = 52
+    button.Parent = main
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+
+    return button
+end
+
+local lockButton =
+    createButton("LockButton", "LOCK: OFF", 55)
+
+local espButton =
+    createButton("ESPButton", "ESP: OFF", 105)
+
+local fovButton =
+    createButton("FOVButton", "FOV: 180", 155)
+
+local anchorButton =
+    createButton("AnchorButton", "DESBLOQUEADO", 205)
+
+--==================================================
+-- ABRIR / CERRAR
+--==================================================
+
+closeButton.Activated:Connect(function()
+
+    main.Visible = false
+    openButton.Visible = true
+
+end)
+
+openButton.Activated:Connect(function()
+
+    main.Visible = true
+    openButton.Visible = false
+
+end)
+
+--==================================================
+-- MOVER MENU
+--==================================================
+
+local menuDragging = false
+local menuDragStart
+local menuStartPosition
+
+main.InputBegan:Connect(function(input)
+
+    if buttonsLocked then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        if input.Position.Y <= main.AbsolutePosition.Y + 45 then
+
+            menuDragging = true
+            menuDragStart = input.Position
+            menuStartPosition = main.Position
+
+            input.Changed:Connect(function()
+
+                if input.UserInputState == Enum.UserInputState.End then
+                    menuDragging = false
+                end
+
+            end)
+        end
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+    if not menuDragging or buttonsLocked then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        local delta = input.Position - menuDragStart
+
+        main.Position =
+            UDim2.new(
+                menuStartPosition.X.Scale,
+                menuStartPosition.X.Offset + delta.X,
+
+                menuStartPosition.Y.Scale,
+                menuStartPosition.Y.Offset + delta.Y
+            )
+    end
+end)
+
+--==================================================
+-- ANCLAR
+--==================================================
+
+anchorButton.Activated:Connect(function()
+
+    buttonsLocked = not buttonsLocked
+
+    if buttonsLocked then
+
+        anchorButton.Text = "ANCLADO"
+        anchorButton.BackgroundColor3 =
+            Color3.fromRGB(60, 60, 60)
+
+    else
+
+        anchorButton.Text = "DESBLOQUEADO"
+        anchorButton.BackgroundColor3 =
+            Color3.fromRGB(35, 35, 35)
+
+    end
+end)
+
+--==================================================
+-- BUSCAR TARGET
+--==================================================
+
+local function getClosestTarget()
+
+    local closest = nil
+    local closestDistance = FOV
+
+    local viewport = camera.ViewportSize
+
+    local center = Vector2.new(
+        viewport.X / 2,
+        viewport.Y / 2
+    )
+
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+
+        if targetPlayer ~= player then
+
+            local character = targetPlayer.Character
+
+            if character then
+
+                local humanoid =
+                    character:FindFirstChildOfClass("Humanoid")
+
+                local head =
+                    character:FindFirstChild("Head")
+
+                if humanoid and head and humanoid.Health > 0 then
+
+                    local position, visible =
+                        camera:WorldToViewportPoint(head.Position)
+
+                    if visible then
+
+                        local distance =
+                            (
+                                Vector2.new(position.X, position.Y)
+                                - center
+                            ).Magnitude
+
+                        if distance <= closestDistance then
+
+                            closestDistance = distance
+                            closest = head
+
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+local function targetAlive(target)
+
+    if not target or not target.Parent then
+        return false
+    end
+
+    local character = target.Parent
+
+    local humanoid =
+        character:FindFirstChildOfClass("Humanoid")
+
+    return humanoid and humanoid.Health > 0
+end
+
+--==================================================
+-- LOCK
+--==================================================
+
+local function updateLockUI()
+
+    if lockEnabled then
+
+        externalLock.Text = "LOCK: ON"
+        externalLock.BackgroundColor3 =
+            Color3.fromRGB(60, 60, 60)
+
+        lockButton.Text = "LOCK: ON"
+
+    else
+
+        externalLock.Text = "LOCK"
+        externalLock.BackgroundColor3 =
+            Color3.fromRGB(30, 30, 30)
+
+        lockButton.Text = "LOCK: OFF"
+
+    end
+end
+
+local function toggleLock()
+
+    lockEnabled = not lockEnabled
+
+    if not lockEnabled then
+        lockedTarget = nil
+    end
+
+    updateLockUI()
+
+end
+
+lockButton.Activated:Connect(toggleLock)
+externalLock.Activated:Connect(toggleLock)
+
+--==================================================
+-- FOV
+--==================================================
+
+fovButton.Activated:Connect(function()
+
+    if FOV == 180 then
+        FOV = 250
+
+    elseif FOV == 250 then
+        FOV = 120
+
+    else
+        FOV = 180
+    end
+
+    fovButton.Text = "FOV: " .. FOV
+
+    fovCircle.Size =
+        UDim2.fromOffset(FOV * 2, FOV * 2)
+
+end)
+
+--==================================================
+-- ESP 2D
+--==================================================
+
+local espObjects = {}
+
+local function removeESP(targetPlayer)
+
+    local data = espObjects[targetPlayer]
+
+    if not data then
+        return
+    end
+
+    if data.box then
+        data.box:Destroy()
+    end
+
+    if data.line then
+        data.line:Destroy()
+    end
+
+    espObjects[targetPlayer] = nil
+end
+
+local function createESP(targetPlayer)
+
+    if targetPlayer == player then
+        return
+    end
+
+    removeESP(targetPlayer)
+
+    local box = Instance.new("Frame")
+
+    box.Name = "BKY_ESP_BOX"
+    box.BackgroundTransparency = 1
+    box.BorderSizePixel = 0
+    box.Visible = false
+    box.ZIndex = 10
+    box.Parent = gui
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Parent = box
+
+    local line = Instance.new("Frame")
+
+    line.Name = "BKY_ESP_LINE"
+    line.BackgroundColor3 = Color3.new(1, 1, 1)
+    line.BorderSizePixel = 0
+    line.AnchorPoint = Vector2.new(0.5, 0.5)
+    line.Visible = false
+    line.ZIndex = 9
+    line.Parent = gui
+
+    espObjects[targetPlayer] = {
+        box = box,
+        line = line
+    }
+end
+
+local function updateESP(targetPlayer, data)
+
+    local character = targetPlayer.Character
+
+    if not character then
+        data.box.Visible = false
+        data.line.Visible = false
+        return
+    end
+
+    local humanoid =
+        character:FindFirstChildOfClass("Humanoid")
+
+    local root =
+        character:FindFirstChild("HumanoidRootPart")
+
+    local head =
+        character:FindFirstChild("Head")
+
+    if not humanoid
+    or humanoid.Health <= 0
+    or not root
+    or not head then
+
+        data.box.Visible = false
+        data.line.Visible = false
+        return
+    end
+
+    local rootPos, rootVisible =
+        camera:WorldToViewportPoint(root.Position)
+
+    local headPos, headVisible =
+        camera:WorldToViewportPoint(
+            head.Position + Vector3.new(0, 0.5, 0)
+        )
+
+    if not rootVisible or not headVisible then
+        data.box.Visible = false
+        data.line.Visible = false
+        return
+    end
+
+    --==================================================
+    -- BOX MÁS PEQUEÑA
+    --==================================================
+
+    local height =
+        math.abs(rootPos.Y - headPos.Y) * 2.2
+
+    local width =
+        height * 0.55
+
+    -- 82% DEL TAMAÑO ORIGINAL
+    local ESP_SCALE = 0.82
+
+    height = height * ESP_SCALE
+    width = width * ESP_SCALE
+
+    if height < 8 then
+        height = 8
+    end
+
+    if width < 5 then
+        width = 5
+    end
+
+    data.box.Size =
+        UDim2.fromOffset(width, height)
+
+    data.box.Position =
+        UDim2.fromOffset(
+            rootPos.X - width / 2,
+            headPos.Y - height * 0.15
+        )
+
+    data.box.Visible = true
+
+    --==================================================
+    -- LINE
+    --==================================================
+
+    local viewport = camera.ViewportSize
+
+    local startX = viewport.X / 2
+    local startY = viewport.Y
+
+    local endX = rootPos.X
+    local endY = rootPos.Y
+
+    local dx = endX - startX
+    local dy = endY - startY
+
+    local length =
+        math.sqrt(dx * dx + dy * dy)
+
+    local angle =
+        math.deg(math.atan2(dy, dx))
+
+    data.line.Size =
+        UDim2.fromOffset(length, 2)
+
+    data.line.Position =
+        UDim2.fromOffset(
+            (startX + endX) / 2,
+            (startY + endY) / 2
+        )
+
+    data.line.Rotation = angle
+    data.line.Visible = true
+
+end
+
+--==================================================
+-- ESP BOTON
+--==================================================
+
+espButton.Activated:Connect(function()
+
+    espEnabled = not espEnabled
+
+    if espEnabled then
+
+        espButton.Text = "ESP: ON"
+
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+
+            if targetPlayer ~= player then
+                createESP(targetPlayer)
+            end
+
+        end
+
+    else
+
+        espButton.Text = "ESP: OFF"
+
+        for targetPlayer in pairs(espObjects) do
+            removeESP(targetPlayer)
+        end
+
+    end
+end)
+
+--==================================================
+-- JUGADORES
+--==================================================
+
+local function setupPlayer(targetPlayer)
+
+    if targetPlayer == player then
+        return
+    end
+
+    targetPlayer.CharacterAdded:Connect(function()
+
+        if espEnabled then
+
+            task.wait(0.2)
+
+            if targetPlayer.Character then
+                createESP(targetPlayer)
+            end
+
+        end
+
+    end)
+
+    targetPlayer.CharacterRemoving:Connect(function()
+        removeESP(targetPlayer)
+    end)
+
+    if targetPlayer.Character and espEnabled then
+        createESP(targetPlayer)
+    end
+
+end
+
+for _, targetPlayer in ipairs(Players:GetPlayers()) do
+    setupPlayer(targetPlayer)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+
+Players.PlayerRemoving:Connect(function(targetPlayer)
+
+    removeESP(targetPlayer)
+
+    if lockedTarget then
+        lockedTarget = nil
+    end
+
+end)
+
+--==================================================
+-- BUCLE
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+
+    camera = workspace.CurrentCamera or camera
+
+    -- FOV
+
+    local viewport = camera.ViewportSize
+
+    fovCircle.Position =
+        UDim2.fromOffset(
+            viewport.X / 2,
+            viewport.Y / 2
+        )
+
+    -- LOCK
+
+    if lockEnabled then
+
+        if not targetAlive(lockedTarget) then
+            lockedTarget = getClosestTarget()
+        end
+
+        if targetAlive(lockedTarget) then
+
+            camera.CFrame =
+                CFrame.lookAt(
+                    camera.CFrame.Position,
+                    lockedTarget.Position
+                )
+
+        end
+    end
+
+    -- ESP
+
+    if espEnabled then
+
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+
+            if targetPlayer ~= player then
+
+                local data = espObjects[targetPlayer]
+
+                if not data then
+
+                    createESP(targetPlayer)
+                    data = espObjects[targetPlayer]
+
+                end
+
+                if data then
+                    updateESP(targetPlayer, data)
+                end
+
+            end
+        end
+    end
+
+end)
+
+--==================================================
+-- BKY SOBRE TU NOMBRE
+--==================================================
+
+local function addOwnBKYTag()
+
+    local character = player.Character
+
+    if not character then
+        return
+    end
+
+    local head = character:FindFirstChild("Head")
+
+    if not head then
+        return
+    end
+
+    local oldTag = head:FindFirstChild("BKYOwnTag")
+
+    if oldTag then
+        oldTag:Destroy()
+    end
+
+    local billboard = Instance.new("BillboardGui")
+
+    billboard.Name = "BKYOwnTag"
+    billboard.Adornee = head
+    billboard.Size = UDim2.fromOffset(70, 18)
+    billboard.StudsOffset = Vector3.new(0, 3.1, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+
+    local text = Instance.new("TextLabel")
+
+    text.Size = UDim2.fromScale(1, 1)
+    text.BackgroundTransparency = 1
+    text.Text = "BKY"
+    text.TextSize = 10
+    text.Font = Enum.Font.GothamBold
+    text.TextColor3 = Color3.new(1, 1, 1)
+    text.TextStrokeTransparency = 0.3
+    text.Parent = billboard
+
+end
+
+if player.Character then
+    task.spawn(addOwnBKYTag)
+end
+
+player.CharacterAdded:Connect(function(character)
+
+    character:WaitForChild("Head", 5)
+
+    task.wait(0.1)
+
+    addOwnBKYTag()
+
+end)
